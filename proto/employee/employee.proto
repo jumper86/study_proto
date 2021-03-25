@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package employee;
+option go_package="/eee";
+
+import "employee/messages.proto";
+import "account/account.proto";
+
+message AddEmployee {
+  string employeeName = 1;
+  HelloRequest hello = 2;
+  account.AddAccount acct = 3;
+}
+
+
+message TestMessage{
+  oneof Body {
+    AddEmployee ae = 1;
+  }
+}

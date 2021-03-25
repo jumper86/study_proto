@@ -1,0 +1,8 @@
+在test目录下，执行 protoc --go_out=. employee/*.proto account/*.proto 即可生成对应pb.go文件
+注意如下几点：
+1. 当前命令执行目录 加上 employee/*.proto account/*.proto 表示所需编译源文件
+2. 当前命令执行目录 加上 --go_out=. 再加上 proto 文件中的 option go_package 构成 pb.go 文件生成位置
+3. 当前命令执行目录 加上 proto 文件中的 import "employee/messages.proto"; 表示该文件所需import的文件
+简单说，当前命令执行目录 作为上述各种目录的根目录
+4. 所有proto文件都要有 option go_package
+

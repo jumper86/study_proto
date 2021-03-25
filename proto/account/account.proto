@@ -1,0 +1,7 @@
+syntax = "proto3";
+package account;
+option go_package="/eee";
+
+message AddAccount {
+  string accountName = 1;
+}

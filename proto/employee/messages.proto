@@ -1,0 +1,7 @@
+syntax = "proto3";
+package employee;
+option go_package="/eee";
+
+message HelloRequest {
+  string content = 1;
+}
