@@ -1,0 +1,34 @@
+在test目录下，执行 protoc --go_out=. employee/*.proto account/*.proto 即可生成对应pb.go文件
+注意如下几点：
+1. 当前命令执行目录 加上 employee/*.proto account/*.proto 表示所需编译源文件
+2. 当前命令执行目录 加上 --go_out=. 再加上 proto 文件中的 option go_package 构成 pb.go 文件生成位置
+3. 当前命令执行目录 加上 proto 文件中的 import "employee/messages.proto"; 表示该文件所需import的文件
+简单说，当前命令执行目录 作为上述各种目录的根目录
+4. 所有proto文件都要有 option go_package
+
+在goland 中需要安装 Protocol Buffer Editor 插件
+并且在 设置中搜索 protocol buffer 页面 import path中添加 import 路径
+比如这里添加的
+Users/mac/work/goproject/study_proto/proto
+这样在proto文件中 import 才能正常显示以及跳转
+
+
+每个包的引用都需要一个路径，路径的切口就是go.mod中的 module 名字
+网络包 github.com/xxx/yyy 因为放到github上发布的包， go.mod 中的 module 名字 都是 github.com/xxx/yyy
+本地上的本项目包 本module 打头的路径 如这里的 test2/pro/person
+本地上的其他项目包 需要用到go.mod 中的 replace
+	首先在 require 中添加 proto v0.0.0
+	然后 replace proto => ../proto，这里的 ../proto 就是本地其他项目包的路径
+    而包../proto 需要是一个 go mod init proto 的包，具有go.mod
+
+replace 的作用
+1. 指定使用本地包
+replace proto => ../proto
+2. 指定使用其他网络包
+replace google/xxx => github.com/xxx
+3. 指定本地包代替网络包
+replace github.com/article => ../article
+比如可能网络包没有本地包更新，因此先使用本地包，本地包上传之后，就可以删除replace，使用网络包了
+
+
+参考： https://www.jianshu.com/p/760c97ff644c

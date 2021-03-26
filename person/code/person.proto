@@ -1,0 +1,47 @@
+syntax = "proto3";
+package code;
+
+
+option go_package = "/code/person";
+
+
+
+message Person{
+  string name = 1;
+  uint32 id = 2;
+  string email = 3;
+
+  enum PhoneType{
+    No = 0;
+    Mobile = 1;
+    Home = 2;
+    Work = 3;
+  }
+
+  message PhoneNumber {
+    PhoneType type = 1;
+    string number = 2;
+  }
+
+  repeated PhoneNumber phone = 4;
+
+}
+
+message AddressBook{
+  repeated Person person = 1;
+}
+
+
+message Company {
+  reserved 1,2,3; //表示之前版本已经使用了这些标号，往后的新版本不能再使用这些标号
+  reserved 10 to max; //指定10以后都不能用
+  string Name = 8;
+}
+
+enum  Status{
+  option allow_alias = true; //允许不同内容具有相同值
+  Unknown = 0;
+  Start = 1;
+  Running = 2;
+  Stop = 2;
+}
