@@ -5,12 +5,16 @@
 3. 当前命令执行目录 加上 proto 文件中的 import "employee/messages.proto"; 表示该文件所需import的文件
 简单说，当前命令执行目录 作为上述各种目录的根目录
 4. 所有proto文件都要有 option go_package
+5. protoc -I 后面可以添加import路径
 
 在goland 中需要安装 Protocol Buffer Editor 插件
 并且在 设置中搜索 protocol buffer 页面 import path中添加 import 路径
 比如这里添加的
 Users/mac/work/goproject/study_proto/proto
 这样在proto文件中 import 才能正常显示以及跳转
+
+
+
 
 
 每个包的引用都需要一个路径，路径的切口就是go.mod中的 module 名字
