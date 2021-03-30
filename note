@@ -1,3 +1,6 @@
+---------------------------------------------
+编译.proto文件的问题
+---------------------------------------------
 在test目录下，执行 protoc --go_out=. employee/*.proto account/*.proto 即可生成对应pb.go文件
 注意如下几点：
 1. 当前命令执行目录 加上 employee/*.proto account/*.proto 表示所需编译源文件
@@ -14,9 +17,50 @@ Users/mac/work/goproject/study_proto/proto
 这样在proto文件中 import 才能正常显示以及跳转
 
 
+另一个例子
+person dir - code dir   - person.proto
+                        - simple.proto
+                        - person dir
+
+正确的执行方式如下
+---
+person.proto 中
+
+syntax = "proto3";
+package code;
+option go_package = "code/person";
+定义 message id / message person
+
+---
+simple.proto 中
+
+syntax = "proto3";
+package code;
+option go_package = "code/person";
+
+import "code/person.proto";
+
+service Simple {
+  rpc GetPerson(Ids) returns (Person) {};
+}
+
+---
+编译命令为
+在 person dir 下执行
+protoc --proto_path=. --go_out=. --go-grpc_out=. code/*.proto
+也就是说在目录x下定义了所有的proto，并且将所有pb文件也生成在x目录下，
+此时应该在x目录的上一层执行命令。
+当然相应的 option / import 这些都应该写为 x/...
+
+如果不这样做，你会发现各种各样的奇葩问题。
+另外需要注意 一个文件引用另一个文件中的定义，需要import 那个文件，即便两个文件在同一个目录下，就像上面那样。
+
+直接将这种方式作为规则，能够防止遇到一些稀奇古怪的问题。
 
 
-
+---------------------------------------------
+引用包的问题
+---------------------------------------------
 每个包的引用都需要一个路径，路径的切口就是go.mod中的 module 名字
 网络包 github.com/xxx/yyy 因为放到github上发布的包， go.mod 中的 module 名字 都是 github.com/xxx/yyy
 本地上的本项目包 本module 打头的路径 如这里的 test2/pro/person
@@ -34,5 +78,9 @@ replace google/xxx => github.com/xxx
 replace github.com/article => ../article
 比如可能网络包没有本地包更新，因此先使用本地包，本地包上传之后，就可以删除replace，使用网络包了
 
-
 参考： https://www.jianshu.com/p/760c97ff644c
+
+当项目中需要引入网络包的时候，只需要在本项目的go.mod文件所在目录或子目录下执行 go get github.com/xxx/yyy
+就会在机器上下载对应库，在go.mod中自动添加引入该库。
+总之需要明白，go.mod 以及go mod工具是与 go get...诸多工具联动的。
+执行这些命令的位置应该是在go.mod 所在目录或子目录，即项目下的目录即可。

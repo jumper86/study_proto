@@ -1,0 +1,9 @@
+syntax = "proto3";
+package code;
+option go_package = "code/person";
+
+import "code/person.proto";
+
+service ClientStream {
+  rpc GetPersonClientStream(stream Ids) returns (Person) {}
+}
