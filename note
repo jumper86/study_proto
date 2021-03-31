@@ -84,3 +84,46 @@ replace github.com/article => ../article
 就会在机器上下载对应库，在go.mod中自动添加引入该库。
 总之需要明白，go.mod 以及go mod工具是与 go get...诸多工具联动的。
 执行这些命令的位置应该是在go.mod 所在目录或子目录，即项目下的目录即可。
+
+
+---------------------------------------------
+etcd 相关
+---------------------------------------------
+etcd 常用操作，基于etcdctlv3
+etcdctl -h
+etcdctl get -h
+
+etcdctl put k v
+etcdctl get k
+etcdctl get --prefix xxx
+etcdctl get --from-key xxx
+etcdctl get --print-value-only k
+
+etcdctl del k
+etcdctl del --prefix xxx
+etcdctl del --from-key xxx
+
+etcdctl watch key
+etcdctl watch key1 key9
+etcdctl watch --prefix k
+
+etcdctl watch -i
+watch foo
+watch zoo
+
+etcdctl lease grant 60
+etcdctl lease revoke 694d77f5dd93178b
+etcdctl put --lease=694d77f5dd93178b t1 v1
+etcdctl lease keep-alive 694d77f5dd93178b
+etcdctl lease timetolive 694d77f5dd93178b
+etcdctl lease timetolive --keys 694d77f5dd93178b
+
+测试发现 keep-alive 会以租约周期的三分之一 来作为keep-alive的执行周期。
+比如假设租约周期30s，keep-alive会每10s续约一次。
+
+golang 中使用 go.etcd.io/etcd/client/v3，非github上的库
+
+
+
+register 即服务端需要向etcd注册自己，并且周期刷新租约
+resolver 即客户端需要从etcd拉取列表，并且监控服务端的变化
