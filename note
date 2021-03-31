@@ -126,4 +126,4 @@ golang 中使用 go.etcd.io/etcd/client/v3，非github上的库
 
 
 register 即服务端需要向etcd注册自己，并且周期刷新租约
-resolver 即客户端需要从etcd拉取列表，并且监控服务端的变化
+resolver 即客户端需要从etcd拉取列表，并且监控服务端的变化，当发现变化，就需要调整连接
