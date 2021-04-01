@@ -127,3 +127,55 @@ golang 中使用 go.etcd.io/etcd/client/v3，非github上的库
 
 register 即服务端需要向etcd注册自己，并且周期刷新租约
 resolver 即客户端需要从etcd拉取列表，并且监控服务端的变化，当发现变化，就需要调整连接
+resolver中两件事情：记录所有node地址信息（用在哪里），发生变化时实时更新连接
+
+dial
+
+
+
+
+etcd 中记录的地址信息格式如下
+key
+etcd://domain/service/node
+value
+192.168.1.77:9999
+
+
+---------------------------------------------
+对于 grpc 中 resolver 相关逻辑的说明：
+---------------------------------------------
+
+简单说明：
+grpc.Dial 中根据target找寻对应 resolver builder，调用build函数创建 resolver，同时开启监控流程。
+监控流程中若是发生连接变化，则通过调用 resolver.ClientConn UpdateState 函数来通知底层，让其对连接作出调整。
+这里监控就是通过etcd watch 功能来实现的。
+所有的服务端node 都以lease 方式写入地址到 etcd 中。
+
+详细说明：
+grpc.Dial 会解析入参target，target形式为 scheme://authority/endpoint
+寻找该 scheme 对应 builder.
+将 builder 传入 newCCResolverWrapper，该函数中调用 build
+这个build就是需要实现的。
+调用build会传入 target , resolver.ClientConn，返回 resolver.Resolver,
+这里返回的 resolver.Resolver 所指向的实体 ccResolverWrapper 中事实上包含了 grpc.ClientConn，即实际的grpc连接。
+
+当连接发生变化的时候，会调用 resolver.ClientConn.UpdateState 函数，该函数中，就会对实际的 grpc.ClientConn 进行更新。
+如下为 resolver.ClientConn 的注释
+// ClientConn contains the callbacks for resolver to notify any updates to the gRPC ClientConn.
+由此可见这个接口的目的就是当发现连接变化时用来通知变更 grpc.ClientConn，这个逻辑已经在底层实现，只需要调用 UpdateState。
+
+因此，建立 resolver 的目的主要就是
+a. 开启监控，监控服务端node的变化
+b. 当监控发现变化时，调用 resolver.ClientConn 的UpdateState 函数，通知底层连接发生变更。
+
+
+
+简单总结：
+业务代码应该实现的部分：
+建立resolver实例
+a. resolver.Register 注册该 resolver 实例
+b. 实现 resolver.Build 函数，将 resolver.ClientConn 保存下来
+c. 在 resolver.Build 函数中开启监控流程，监控服务端node变化，当发生变化时，获取到最新的服务端node地址，然后
+调用 resolver.ClientConn UpdateState 函数，通知底层服务端node发生变化
+
+这里的 resolver 实例的一个例子就是 github.com/smartwalle/grpc4go/etcd@v0.0.2/register.go 中的Registry
