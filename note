@@ -179,3 +179,76 @@ c. 在 resolver.Build 函数中开启监控流程，监控服务端node变化，
 调用 resolver.ClientConn UpdateState 函数，通知底层服务端node发生变化
 
 这里的 resolver 实例的一个例子就是 github.com/smartwalle/grpc4go/etcd@v0.0.2/register.go 中的Registry
+
+
+
+
+---------------------------------------------
+对于 grpc 中 Dial 的理解：
+---------------------------------------------
+实验方式：
+look_etcd/server 中启动两个不同端口的server
+因为这里在server.go中没有写注册地址到etcd的逻辑
+因此需在etcd中手动写入地址即
+testetcd://testes/testservice/testnode1  192.168.1.188:26667
+testetcd://testes/testservice/testnode2  192.168.1.188:26668
+
+启动 look_etcd/client
+就会发现两个testnode依次接收到client请求
+
+
+理解：
+首先需要理解 grpc.Dial 的行为
+假设有两个服务端节点
+testetcd://testes/testservice/testnode1
+testetcd://testes/testservice/testnode2
+
+
+执行
+cc, err := grpc.Dial("testetcd://testes/testservice/testnode1”,
+	grpc.WithInsecure(),
+	grpc.WithBlock(), grpc.WithTimeout(3*time.Second),
+	grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy":"round_robin"}`),
+)
+的时候，在底层只会建立一个连接，连接到testnode1 （lsof -i:26667）
+即返回的cc
+没有配置 grpc.WithDefaultServiceConfig 也是如此。
+
+
+
+执行
+cc, err := grpc.Dial("testetcd://testes/testservice",
+	grpc.WithInsecure(),
+	grpc.WithBlock(), grpc.WithTimeout(3*time.Second),
+	grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy":"round_robin"}`),
+)
+的时候，在底层会建立两个连接，分别连接到testnode1 和 testnode2。
+返回的cc 并不是一个简单的连接，应该理解为包装了的一个上层连接抽象。
+
+a. 此时调用函数，会发现调用的均衡性，第一次调用到testnode1，第二次调用到testnode2，如此轮询
+若是没有上述 grpc.WithDefaultServiceConfig 配置，则不会出现这种均衡性，会只与一个testnode建立连接进行通信。
+b. 当关闭testnode1，会发现客户端调用后续都会发往testnode2，不会出现报错，即在业务层面是不会感知到testnode1关闭的。
+当关闭完所有的node，才会客户端报错。
+
+cc 是一个上层连接抽象，事实上，在一个客户端中可以只使用一个 cc ，这个cc在底层与每个testnode都建立了一个连接，并且会根据均衡策略将每次请求（4类）分发到不同testnode中去。
+简单说我一个客户端需要连接n个节点，只需要一个cc就够了，当然前提是定义了resolver逻辑。
+若是怕一个cc不够用，或者发生阻塞之类的，可以考虑建立多个cc，形成一个pool。
+
+
+另一种理解：
+这里的 testetcd://testes/testservice 就是一个uri，这里grpc在底层实现的就是一个dns的类似功能。
+cc就是代表了 该 uri 对应的所有node。
+使用cc通信，底层会将请求分发到各个node 。
+
+
+
+
+
+上述方式有一个特点，就是不知道下一次利用cc来调用服务函数，他到底会选择哪个节点提供node。
+在room调用game的需求中，是需要知道选择了哪个game，然后通知客户端的。
+因此在room中，采用手动方式来管理所有连接。
+即
+一个room针对每个game建立一个连接（grpc.Dial中第一个参数是直接指向一个node的），
+之后将所有连接管理起来。
+每次需要create room 的时候，会选择一个连接进行调用服务。
+他在watcher中需要的就是当连接发生变化的时候，更新他的连接管理数据。
